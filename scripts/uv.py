@@ -50,72 +50,25 @@ def polar_to_xyz(phi, theta):
     return [x, y, z]
 
 
-# def spread_discretization(phi_num=20):
-#     phis = np.linspace(0, math.pi, phi_num + 1, endpoint=True)
-#     vh = VertexHolder()
-#     faces_all = []
-#     cells_all = []
-#     cells_bounds_all = []
-#     for i in range(1, phi_num):
-#         phi = phis[i]
-#         nc = 2 * phi_num * math.sin(phi)
-#         nc = int(np.round(nc))
-#         thetas = np.linspace(0, 2 * np.pi, nc, endpoint=False)
-
-#         phi_top = (phis[i - 1] + phis[i]) / 2.0
-#         phi_bottom = (phis[i + 1] + phis[i]) / 2.0
-#         theta_step = (thetas[1] - thetas[0]) / 2.0
-#         faces = []
-#         cells = []
-#         cells_bounds = []
-#         for theta in thetas:
-#             theta_left = theta - theta_step
-#             theta_right = theta + theta_step
-
-#             p_center = polar_to_xyz(phi, theta)
-#             cells.append(p_center)
-#             cells_bounds.append([phi_top, phi_bottom, theta_left, theta_right])
-
-#             p1 = polar_to_xyz(phi_top, theta_left)
-#             p2 = polar_to_xyz(phi_top, theta_right)
-#             p3 = polar_to_xyz(phi_bottom, theta_right)
-#             p4 = polar_to_xyz(phi_bottom, theta_left)
-
-#             # so that there is a curve between p3 to p4
-#             bunch_of_thetas = np.linspace(theta_right, theta_left, num=10, endpoint=False)
-#             bunch_of_points = [polar_to_xyz(phi_bottom, b_t) for b_t in bunch_of_thetas[1:]]
-
-#             p_indices = [vh.add_vertex(p) for p in [p1, p2, p3, *bunch_of_points, p4]]
-#             faces.append(p_indices)
-#         cells_all.append(cells)
-#         cells_bounds_all.append(cells_bounds)
-#         faces_all.append(np.array(faces))
-    
-#     cells_all.insert(0, [[0, 0, 1]])
-#     cells_all.append([[0, 0, -1]])
-
-#     phi_bottom = (phis[0] + phis[1]) / 2.0
-#     phi_top = (phis[-2] + phis[-1]) / 2.0
-#     cells_bounds_all.insert(0, [[0, phi_bottom, 0, 2*math.pi]])
-#     cells_bounds_all.append([[phi_top,math.pi,0, 2*math.pi]])
-
-#     return np.row_stack(vh.all_vertices), faces_all, cells_all, cells_bounds_all, phis
-
-def spread_discretization(phi_num=20):
+def strips_discretization(phi_num=20):
+    "Discretizes sphere into strips of phi"
     phis = np.linspace(0, math.pi, phi_num, endpoint=True)
     vh = VertexHolder()
     faces_all = []
     cells_all = []
     cells_bounds_all = []
     # print(phis)
+    top_cap = []
+    bottom_cap = []
     for i in range(1, phi_num -2):
-        phi = phis[i]
-        nc = 2 * phi_num * math.sin(phi)
-        nc = int(np.round(nc))
-        thetas = np.linspace(0, 2 * np.pi, nc, endpoint=False)
-
         phi_top = phis[i]
         phi_bottom = phis[i+1]
+        phi = (phi_top + phi_bottom) / 2.0
+        nc = 2 * phi_num * math.sin(phi)
+        nc = int(np.round(nc))
+        print(nc)
+        thetas = np.linspace(0, 2 * np.pi, nc, endpoint=False)
+
         theta_step = (thetas[1] - thetas[0]) / 2.0
         faces = []
         cells = []
@@ -138,6 +91,10 @@ def spread_discretization(phi_num=20):
             bunch_of_points = [polar_to_xyz(phi_bottom, b_t) for b_t in bunch_of_thetas[1:]]
 
             p_indices = [vh.add_vertex(p) for p in [p1, p2, p3, *bunch_of_points, p4]]
+            if i == 1:
+                top_cap.append(p_indices[0])
+            elif i == phi_num - 3:
+                bottom_cap.append(p_indices[0])
             faces.append(p_indices)
         cells_all.append(cells)
         cells_bounds_all.append(cells_bounds)
@@ -152,6 +109,10 @@ def spread_discretization(phi_num=20):
     phi_top = (phis[-2] + phis[-1]) / 2.0
     cells_bounds_all.insert(0, [[0, phi_bottom, 0, 2*math.pi]])
     cells_bounds_all.append([[phi_top,math.pi,0, 2*math.pi]])
+
+    # Do the caps
+    faces_all.insert(0, np.array([top_cap], dtype=int))
+    faces_all.append(np.array([bottom_cap], dtype=int))
 
     return np.row_stack(vh.all_vertices), faces_all, cells_all, cells_bounds_all, phis
 
@@ -184,6 +145,7 @@ def uv_discretization(phi=20, theta=20, start_phi=0.01):
 
 
 def create_xyz_grid(thetas, phis):
+    "Create flat 2D array 3D points of the UV decomposition"
     shape = (len(thetas), len(phis))
     grid = np.zeros(shape + (3, ))
     for i, theta in enumerate(thetas):
@@ -197,7 +159,8 @@ def create_xyz_grid(thetas, phis):
     return grid, shape
 
 
-def create_cells(grid):
+def create_uv_cells(grid):
+    "Create cells for uv decomposition"
     vh = VertexHolder()
     faces = []
     max_row = grid.shape[0]
@@ -227,11 +190,12 @@ def create_cells(grid):
 
 
 def draw_faces(vertices: np.ndarray, faces: np.ndarray, ax: mpl.axes.Axes):
-    faces_points = vertices[faces]
+    "Draw faces of cell decomposition of sphere"
     colors = plt.get_cmap('tab20').colors
     all_polys = []
-    for i in range(faces_points.shape[0]):
-        xyz = faces_points[i, :, :]
+    for i in range(len(faces)):
+        xyz = vertices[faces[i]]
+        # xyz = faces_points[i, :, :]
         ax.plot(xyz[:, 0], xyz[:, 1], xyz[:, 2], c='k', alpha=0.0)
         all_polys.append(xyz.tolist())
 
@@ -255,6 +219,7 @@ def plt_show():
     input("Press enter to continue...")
 
 def plot(vertices, faces_list):
+    "3D visualization of decomposition"
     fig = plt.figure(figsize=(6, 6))
     ax = fig.gca(projection='3d')
 
@@ -272,12 +237,12 @@ def plot(vertices, faces_list):
     ax.set_yticks([])
     ax.set_zticks([])
 
-    # get correct view
+    # View x axis head on
     ax.view_init(elev=0, azim=180)
     ax.dist = 6.4
     plt_show()
 
-    # next one
+    # Rotate view to north pole
     ax.view_init(elev=90, azim=180)
     ax.dist = 6.4
     plt_show()
@@ -291,36 +256,29 @@ def plot(vertices, faces_list):
     # fig.close()
 
 def plot_histogram_grid(samples, grid:np.ndarray):
+    "Plot histogram of grid (uv decomposition)"
     all_samples = np.concatenate(samples, axis=0)
     grid_flat = grid.reshape((grid.shape[0] * grid.shape[1], 3))
     tree = cKDTree(grid_flat, leafsize=8)
 
-    # import ipdb; ipdb.set_trace()
     _, indices = tree.query(all_samples, k=1)
 
     image = np.zeros(grid.shape[:2], dtype=np.uint8)
     image_flat = image.reshape((grid.shape[0] * grid.shape[1], ))
     np.add.at(image_flat, indices, 1)
-    # image_flat[indices] = 255
+
+    fig =plt.figure(figsize=(6,6))
+    ax = fig.gca()
     image = np.swapaxes(image, 0, 1)
-    plt.imshow(image)
+
+
+    ax.imshow(image)
     plt_show()
     plt.close()
 
-def strips_to_grid(strip_cells):
-    rows = len(strip_cells)
-    columns =  np.max([len(cells) for cells in strip_cells])
-    print(rows, columns)
-    image = np.zeros((rows, columns), dtype=np.uint8)
-
-    grid_strip = np.zeros((rows, columns, 3), dtype='f8')
-
-    for cells in strip_cells:
-        print(len(cells))
-
 
 def cell_values_to_strips(cells_list, cells_values):
-
+    "Concert flattened values array to strips"
     idx = 0
     cells_values_list = []
     for i in range(len(cells_list)):
@@ -333,7 +291,7 @@ def cell_values_to_strips(cells_list, cells_values):
 
 
 def get_strip_values(samples, cells):
-
+    "Get values for each cell in the strip decomposition"
     all_samples = np.concatenate(samples, axis=0)
     cells_np = np.array(flatten(cells))
     
@@ -342,27 +300,30 @@ def get_strip_values(samples, cells):
     _, indices = tree.query(all_samples, k=1)
     np.add.at(cells_values, indices, 1)
 
+    max_value = np.max(cells_values)
+
     cells_value_list = cell_values_to_strips(cells, cells_values)
 
-    return cells_value_list
+    return cells_value_list, max_value
 
 def plot_histogram_strips(samples, cells_list, cells_bounds_list, phis):
-    strip_cell_values = get_strip_values(samples, cells_list)
-
-    fig =plt.figure(figsize=(4,4))
+    "Plot histogram of strips decomposition"
+    strip_cell_values, max_value = get_strip_values(samples, cells_list)
+    cmap = mpl.cm.get_cmap('viridis')
+    fig =plt.figure(figsize=(6,6))
     ax = fig.gca()
     height = 0.16534698
     height = phis[1] - phis[0]
     total_height = 0.0
     for i in range(len(cells_list)):
         cell_bounds = cells_bounds_list[i]
+        cell_values = strip_cell_values[i]
         for j in range(len(cell_bounds)):
             y1, y2, x1, x2 = cell_bounds[j]
+            value = cell_values[j]
+            color = cmap(value / max_value)
             width = np.abs(x2 - x1)
-            # print(y1, y2)
-            # import ipdb; ipdb.set_trace()
-            # print(total_height)
-            rect_patch = Rectangle((x1, total_height), width, height, ec='k')
+            rect_patch = Rectangle((x1, total_height), width, height, ec='k', color=color)
             ax.add_patch(rect_patch)
         total_height += height
             
@@ -370,24 +331,20 @@ def plot_histogram_strips(samples, cells_list, cells_bounds_list, phis):
     ax.set_ylabel('phi')
     ax.set_xlim([-0.4, 6.5])
     ax.set_ylim([-0.4, 3.6])
-    plt.show()
-    # import ipdb; ipdb.set_trace()
+    plt_show()
+    plt.close()
 
-
-
-
-    strips_to_grid(cells)
 
 
 def main():
     # UV Sphere
-    # lats, longs = uv_discretization(phi=20, theta=20)
-    # grid, shape = create_xyz_grid(longs, lats)
-    # vertices, faces = create_cells(grid)
-    # samples = plot(vertices, [faces])
-    # plot_histogram_grid(samples, grid)
+    lats, longs = uv_discretization(phi=20, theta=20)
+    grid, shape = create_xyz_grid(longs, lats)
+    vertices, faces = create_uv_cells(grid)
+    samples = plot(vertices, [faces])
+    plot_histogram_grid(samples, grid)
     # 
-    vertices, faces, cells, cells_bounds, phis = spread_discretization(phi_num=20)
+    vertices, faces, cells, cells_bounds, phis = strips_discretization(phi_num=20)
     samples = plot(vertices, [flatten(faces)])
     plot_histogram_strips(samples, cells, cells_bounds, phis)
 
