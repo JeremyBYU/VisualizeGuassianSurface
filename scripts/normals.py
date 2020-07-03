@@ -17,7 +17,7 @@ def normalized(a, axis=-1, order=2):
 def create_arrows(ax: mpl.axes.Axes, normals: np.ndarray, expand=1.05):
     points = normals * expand
     ax.quiver(points[:, 0], points[:, 1], points[:, 2], normals[:, 0],
-              normals[:, 1], normals[:, 2], length=0.1, normalize=False, color=COLORS[6])
+              normals[:, 1], normals[:, 2], length=0.2, normalize=False, color=COLORS[6], linewidths=3.0)
 
 
 def create_samples(normal=np.array([0, 1, 0]), std=0.01, size=50):

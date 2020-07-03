@@ -60,9 +60,9 @@ def strips_discretization(phi_num=20):
     # print(phis)
     top_cap = []
     bottom_cap = []
-    for i in range(1, phi_num -2):
+    for i in range(1, phi_num - 2):
         phi_top = phis[i]
-        phi_bottom = phis[i+1]
+        phi_bottom = phis[i + 1]
         phi = (phi_top + phi_bottom) / 2.0
         nc = 2 * phi_num * math.sin(phi)
         nc = int(np.round(nc))
@@ -101,14 +101,14 @@ def strips_discretization(phi_num=20):
         faces_all.append(np.array(faces))
         # print(cells_bounds)
         # import ipdb; ipdb.set_trace()
-    
+
     cells_all.insert(0, [[0, 0, 1]])
     cells_all.append([[0, 0, -1]])
 
     phi_bottom = (phis[0] + phis[1]) / 2.0
     phi_top = (phis[-2] + phis[-1]) / 2.0
-    cells_bounds_all.insert(0, [[0, phi_bottom, 0, 2*math.pi]])
-    cells_bounds_all.append([[phi_top,math.pi,0, 2*math.pi]])
+    cells_bounds_all.insert(0, [[0, phi_bottom, 0, 2 * math.pi]])
+    cells_bounds_all.append([[phi_top, math.pi, 0, 2 * math.pi]])
 
     # Do the caps
     faces_all.insert(0, np.array([top_cap], dtype=int))
@@ -211,6 +211,7 @@ def create_samples_and_arrow(ax, normal=np.array([0, 1, 0]), size=50, **kwargs):
     create_arrows(ax, normals_3d)
     return normals_3d
 
+
 def plt_show():
     '''Text-blocking version of plt.show()
     Use this instead of plt.show()'''
@@ -218,9 +219,10 @@ def plt_show():
     plt.pause(0.001)
     input("Press enter to continue...")
 
-def plot(vertices, faces_list):
+
+def plot(vertices, faces_list, title='uv'):
     "3D visualization of decomposition"
-    fig = plt.figure(figsize=(6, 6))
+    fig = plt.figure(figsize=(4, 4))
     ax = fig.gca(projection='3d')
 
     for faces in faces_list:
@@ -238,24 +240,25 @@ def plot(vertices, faces_list):
     ax.set_zticks([])
 
     # View x axis head on
-    ax.view_init(elev=0, azim=180)
+    ax.view_init(elev=0, azim=160)
     ax.dist = 6.4
     plt_show()
+    fig.savefig(f'assets/{title}_sphere_1.pdf', bbox_inches='tight')
 
     # Rotate view to north pole
-    ax.view_init(elev=90, azim=180)
+    ax.view_init(elev=90, azim=160)
     ax.dist = 6.4
     plt_show()
-
+    fig.savefig(f'assets/{title}_sphere_2.pdf', bbox_inches='tight')
 
     plt.close()
 
     return [samples_z, samples_y]
 
-
     # fig.close()
 
-def plot_histogram_grid(samples, grid:np.ndarray):
+
+def plot_histogram_grid(samples, grid: np.ndarray):
     "Plot histogram of grid (uv decomposition)"
     all_samples = np.concatenate(samples, axis=0)
     grid_flat = grid.reshape((grid.shape[0] * grid.shape[1], 3))
@@ -267,13 +270,30 @@ def plot_histogram_grid(samples, grid:np.ndarray):
     image_flat = image.reshape((grid.shape[0] * grid.shape[1], ))
     np.add.at(image_flat, indices, 1)
 
-    fig =plt.figure(figsize=(6,6))
+    fig = plt.figure(figsize=(8, 4))
     ax = fig.gca()
     image = np.swapaxes(image, 0, 1)
 
+    ax.pcolormesh(image, edgecolors='k', linewidth=1)
+    ax.set_xlabel(r'$\theta$', fontsize=20, labelpad=-15.0)
+    ax.set_ylabel(r'$\phi$', fontsize=20, labelpad=-35.0)
+    # ax.grid(which='minor', color='k', linestyle='-', linewidth=2)
 
-    ax.imshow(image)
+    ax.set_xlim([-2, 22])
+    ax.set_ylim([-2, 22])
+    ax.set_xticks(ticks=[0, grid.shape[0]])
+    ax.set_xticklabels([0, 6.28])
+    ax.set_yticks(ticks=[0, grid.shape[1]])
+    ax.set_yticklabels([0, 3.14])
+
+    ax.xaxis.set_tick_params(labelsize=16)
+    ax.yaxis.set_tick_params(labelsize=16)
+    plt.gca().invert_yaxis()
+
+    # ax.set_yticks([0, 3.14])
+    # ax.set_axisline_style('-|>')
     plt_show()
+    fig.savefig('assets/uv_histogram.pdf', bbox_inches='tight')
     plt.close()
 
 
@@ -284,7 +304,7 @@ def cell_values_to_strips(cells_list, cells_values):
     for i in range(len(cells_list)):
         cells = cells_list[i]
         num_cells = len(cells)
-        values_list = cells_values[idx:idx+num_cells]
+        values_list = cells_values[idx:idx + num_cells]
         cells_values_list.append(values_list)
         idx += num_cells
     return cells_values_list
@@ -294,7 +314,7 @@ def get_strip_values(samples, cells):
     "Get values for each cell in the strip decomposition"
     all_samples = np.concatenate(samples, axis=0)
     cells_np = np.array(flatten(cells))
-    
+
     cells_values = np.zeros((cells_np.shape[0], ), dtype=np.uint8)
     tree = cKDTree(cells_np, leafsize=8)
     _, indices = tree.query(all_samples, k=1)
@@ -306,34 +326,55 @@ def get_strip_values(samples, cells):
 
     return cells_value_list, max_value
 
+
 def plot_histogram_strips(samples, cells_list, cells_bounds_list, phis):
     "Plot histogram of strips decomposition"
     strip_cell_values, max_value = get_strip_values(samples, cells_list)
     cmap = mpl.cm.get_cmap('viridis')
-    fig =plt.figure(figsize=(6,6))
+    fig = plt.figure(figsize=(8, 4))
     ax = fig.gca()
     height = 0.16534698
     height = phis[1] - phis[0]
     total_height = 0.0
+
+    vector_x = -1.0
+    ax.text(vector_x - 0.05, height - 0.25, r'$\phi$', fontsize=20)
     for i in range(len(cells_list)):
         cell_bounds = cells_bounds_list[i]
         cell_values = strip_cell_values[i]
+        rect_patch = Rectangle((vector_x, total_height), height, height, ec='k', color='white')
+        ax.add_patch(rect_patch)
         for j in range(len(cell_bounds)):
             y1, y2, x1, x2 = cell_bounds[j]
+            if j == 0:
+                dx = (x1 - vector_x) - .5
+                dy = 0
+                ax.arrow(vector_x + 0.3, total_height + height / 2.0, dx, dy, color='k', width=.02)
             value = cell_values[j]
             color = cmap(value / max_value)
             width = np.abs(x2 - x1)
             rect_patch = Rectangle((x1, total_height), width, height, ec='k', color=color)
             ax.add_patch(rect_patch)
         total_height += height
-            
-    ax.set_xlabel('theta')
-    ax.set_ylabel('phi')
-    ax.set_xlim([-0.4, 6.5])
-    ax.set_ylim([-0.4, 3.6])
-    plt_show()
-    plt.close()
 
+    ax.set_xlabel(r'$\theta$', fontsize=20)
+    ax.set_ylabel(r'$\phi$', fontsize=20)
+    ax.set_xlim([-1.4, 6.5])
+    ax.set_ylim([-0.33, 3.3])
+    ax.xaxis.set_tick_params(labelsize=16)
+    ax.yaxis.set_tick_params(labelsize=16)
+    plt.gca().invert_yaxis()
+    margins = dict(top=0.93,
+                   bottom=0.165,
+                   left=0.095,
+                   right=0.9,
+                   hspace=0.2,
+                   wspace=0.2)
+    fig.subplots_adjust(**margins)
+    plt_show()
+    fig.set_size_inches(8, 4)
+    fig.savefig('assets/strips_histogram.pdf')
+    plt.close()
 
 
 def main():
@@ -341,11 +382,11 @@ def main():
     lats, longs = uv_discretization(phi=20, theta=20)
     grid, shape = create_xyz_grid(longs, lats)
     vertices, faces = create_uv_cells(grid)
-    samples = plot(vertices, [faces])
+    samples = plot(vertices, [faces], title='uv')
     plot_histogram_grid(samples, grid)
-    # 
+    #
     vertices, faces, cells, cells_bounds, phis = strips_discretization(phi_num=20)
-    samples = plot(vertices, [flatten(faces)])
+    samples = plot(vertices, [flatten(faces)], title='strips')
     plot_histogram_strips(samples, cells, cells_bounds, phis)
 
 
