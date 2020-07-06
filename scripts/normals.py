@@ -23,7 +23,7 @@ def create_arrows(ax: mpl.axes.Axes, normals: np.ndarray, expand=1.05):
 def create_samples(normal=np.array([0, 1, 0]), std=0.01, size=50):
     # create 2D samples
     # import ipdb; ipdb.set_trace()
-    np.random.seed(1)
+    np.random.seed(4)
     cov = np.identity(2) * std
     samples_2d = np.random.multivariate_normal([0.0, 0.0], cov, size=size)
     samples_3d = np.append(samples_2d, np.ones((samples_2d.shape[0], 1)), 1)

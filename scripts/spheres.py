@@ -12,6 +12,9 @@ from .normals import create_samples, create_arrows
 from scipy.spatial.ckdtree import cKDTree
 
 
+COLORS = plt.get_cmap('tab20').colors
+
+
 def flatten(l): return [item for sublist in l for item in sublist]
 
 
@@ -243,13 +246,13 @@ def plot(vertices, faces_list, title='uv'):
     ax.view_init(elev=0, azim=160)
     ax.dist = 6.4
     plt_show()
-    fig.savefig(f'assets/{title}_sphere_1.pdf', bbox_inches='tight')
+    fig.savefig(f'assets/{title}_sphere_1.png', bbox_inches='tight')
 
     # Rotate view to north pole
     ax.view_init(elev=90, azim=160)
     ax.dist = 6.4
     plt_show()
-    fig.savefig(f'assets/{title}_sphere_2.pdf', bbox_inches='tight')
+    fig.savefig(f'assets/{title}_sphere_2.png', bbox_inches='tight')
 
     plt.close()
 
@@ -273,8 +276,8 @@ def plot_histogram_grid(samples, grid: np.ndarray):
     fig = plt.figure(figsize=(8, 4))
     ax = fig.gca()
     image = np.swapaxes(image, 0, 1)
-
-    ax.pcolormesh(image, edgecolors='k', linewidth=1)
+    # color = plt.get_cmap('Reds')(1.0)
+    ax.pcolormesh(image, edgecolors='k', linewidth=1, cmap='viridis')
     ax.set_xlabel(r'$\theta$', fontsize=20, labelpad=-15.0)
     ax.set_ylabel(r'$\phi$', fontsize=20, labelpad=-35.0)
     # ax.grid(which='minor', color='k', linestyle='-', linewidth=2)
@@ -293,7 +296,7 @@ def plot_histogram_grid(samples, grid: np.ndarray):
     # ax.set_yticks([0, 3.14])
     # ax.set_axisline_style('-|>')
     plt_show()
-    fig.savefig('assets/uv_histogram.pdf', bbox_inches='tight')
+    fig.savefig('assets/uv_histogram.png', bbox_inches='tight')
     plt.close()
 
 
@@ -373,7 +376,7 @@ def plot_histogram_strips(samples, cells_list, cells_bounds_list, phis):
     fig.subplots_adjust(**margins)
     plt_show()
     fig.set_size_inches(8, 4)
-    fig.savefig('assets/strips_histogram.pdf')
+    fig.savefig('assets/strips_histogram.png')
     plt.close()
 
 
